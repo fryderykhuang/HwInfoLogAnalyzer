@@ -22,8 +22,10 @@ public partial class HwInfoVfLogParser : IDisposable, INotifyPropertyChanged
     [Notify(Setter.Private)] private bool _isHeaderParsed;
     [Notify(Setter.Private)] private int _processedLines;
     [Notify(Setter.Private)] private ParserState _state;
-    private double _maxVoltage;
-    private double _maxClock;
+    private readonly double _maxVoltage;
+    private readonly double _maxClock;
+    private readonly double _minVoltage;
+    private readonly double _minClock;
 
 
     public HwInfoVfLogParser(string logFilePath, Config? config = null)
@@ -31,6 +33,8 @@ public partial class HwInfoVfLogParser : IDisposable, INotifyPropertyChanged
         config ??= new Config();
         _maxVoltage = config.MaxVoltage;
         _maxClock = config.MaxClock;
+        _minVoltage = config.MinVoltage;
+        _minClock = config.MinClock;
         _voltageRegex = new Regex(config.CoreVidHeaderRegex, RegexOptions.Compiled | RegexOptions.CultureInvariant);
         _clockRegex = new Regex(config.CoreClockHeaderRegex, RegexOptions.Compiled | RegexOptions.CultureInvariant);
         _sr = new StreamReader(File.Open(logFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
@@ -108,6 +112,8 @@ public partial class HwInfoVfLogParser : IDisposable, INotifyPropertyChanged
 
         return ret;
     }
+    
+    private static readonly Regex DataRegex = new(@"\s*\d+(\.\d+)?\s*", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private void ParseDataLine(string ln)
     {
@@ -115,11 +121,15 @@ public partial class HwInfoVfLogParser : IDisposable, INotifyPropertyChanged
         foreach (var (coreIdx, voltageFieldIdx) in _voltageIndices)
         {
             var clockFieldIdx = _clockIndices[coreIdx];
+            var voltageField = fields[voltageFieldIdx];
+            var clockField = fields[clockFieldIdx];
 
+            if (!DataRegex.IsMatch(voltageField) || !DataRegex.IsMatch(clockField)) throw new FormatException();
+            
             var voltage = double.Parse(fields[voltageFieldIdx]);
-            if (voltage > _maxVoltage) throw new ArgumentOutOfRangeException(nameof(voltage));
+            if (voltage > _maxVoltage || voltage < _minVoltage) throw new ArgumentOutOfRangeException(nameof(voltage));
             var clock = double.Parse(fields[clockFieldIdx]);
-            if (clock > _maxClock) throw new ArgumentOutOfRangeException(nameof(clock));
+            if (clock > _maxClock || clock < _minClock) throw new ArgumentOutOfRangeException(nameof(clock));
 
             lock (_perCoreData)
             {
