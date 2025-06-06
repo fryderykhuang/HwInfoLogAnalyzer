@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net9.0-windows</TargetFramework>
+        <Nullable>enable</Nullable>
+        <UseWindowsForms>true</UseWindowsForms>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <PublishAot>false</PublishAot>
+        <_SuppressWinFormsTrimError>true</_SuppressWinFormsTrimError>
+        <PublishTrimmed>true</PublishTrimmed>
+        <TrimMode>full</TrimMode>
+        <PublishSingleFile>true</PublishSingleFile>
+        <SelfContained>true</SelfContained>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="OxyPlot.WindowsForms" Version="2.2.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\HwInfoVFParser\HwInfoVFParser.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <RdXmlFile Include="rd.xml"/>
+    </ItemGroup>
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <DebuggerSupport>false</DebuggerSupport>
+        <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+        <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
+        <EventSourceSupport>false</EventSourceSupport>
+        <StackTraceSupport>false</StackTraceSupport>
+        <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+        <UseSystemResourceKeys>true</UseSystemResourceKeys>
+        <InvariantGlobalization>true</InvariantGlobalization>
+    </PropertyGroup>
+</Project>

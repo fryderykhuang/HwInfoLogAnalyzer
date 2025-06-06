@@ -1,0 +1,56 @@
+﻿using HwInfoVFParser;
+
+using (var parser = new HwInfoVfLogParser(new Config(), args[0]))
+{
+    var cts = new CancellationTokenSource();
+
+    Console.CancelKeyPress += ConsoleOnCancelKeyPress;
+
+    void ConsoleOnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
+    {
+        cts.Cancel();
+    }
+
+    parser.LineParsed += ParserOnLineParsed;
+
+    void ParserOnLineParsed(LineParsedEvent obj)
+    {
+        if (obj.SuccessCount > 1)
+        {
+            Console.CursorTop = Math.Max(0, Console.CursorTop - obj.PerCoreDataPoints.Count - 1);
+            Console.CursorLeft = 0;
+        }
+
+        Console.WriteLine($"Success: {obj.SuccessCount}, Error: {obj.ErrorCount}");
+        var stats = obj.PerCoreDataPoints.OrderBy(x => x.Key).ToArray();
+        foreach (var (coreIdx, data) in stats)
+        {
+            Console.WriteLine($"Core {coreIdx}: Count: {data.RecordCount}, Duplicate: {data.DuplicateCount}");
+        }
+    }
+
+    Console.WriteLine("Press Ctrl-C to stop read log.");
+
+    try
+    {
+        await parser.RunAsync(cts.Token);
+    }
+    catch (OperationCanceledException)
+    {
+    }
+
+    var result = parser.GetPerCoreData();
+    foreach (var (coreIdx, data) in result)
+    {
+        Console.Write($"Core {coreIdx}: ");
+        foreach (var vfEntry in data)
+        {
+            Console.Write($"{vfEntry.Voltage}:{vfEntry.Clock} ");
+        }
+
+        Console.WriteLine();
+    }
+
+    Console.WriteLine("Press enter to exit...");
+    Console.ReadLine();
+}
