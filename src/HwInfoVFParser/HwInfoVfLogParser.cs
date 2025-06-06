@@ -76,13 +76,13 @@ public partial class HwInfoVfLogParser : IDisposable, INotifyPropertyChanged
         if (!IsHeaderParsed) // header
             try
             {
-                ParseHeader(ln);
+                if (!ParseHeader(ln)) return;
                 HeaderParsed?.Invoke(this, new HeaderParsedEventArgs(this.GetPerCoreDataSource()));
                 IsHeaderParsed = true;
             }
             catch
             {
-                throw new NotSupportedException();
+                // ignored
             }
         else
             try
@@ -112,8 +112,9 @@ public partial class HwInfoVfLogParser : IDisposable, INotifyPropertyChanged
 
         return ret;
     }
-    
-    private static readonly Regex DataRegex = new(@"\s*\d+(\.\d+)?\s*", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex DataRegex = new(@"\s*\d+(\.\d+)?\s*",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private void ParseDataLine(string ln)
     {
@@ -125,7 +126,7 @@ public partial class HwInfoVfLogParser : IDisposable, INotifyPropertyChanged
             var clockField = fields[clockFieldIdx];
 
             if (!DataRegex.IsMatch(voltageField) || !DataRegex.IsMatch(clockField)) throw new FormatException();
-            
+
             var voltage = double.Parse(fields[voltageFieldIdx]);
             if (voltage > _maxVoltage || voltage < _minVoltage) throw new ArgumentOutOfRangeException(nameof(voltage));
             var clock = double.Parse(fields[clockFieldIdx]);
@@ -165,14 +166,34 @@ public partial class HwInfoVfLogParser : IDisposable, INotifyPropertyChanged
         return true;
     }
 
-    private void ParseHeader(string ln)
+    private bool ParseHeader(string ln)
     {
+        var voltParsed = false;
+        var clockParsed = false;
         var fields = ln.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         for (var index = 0; index < fields.Length; index++)
         {
             var field = fields[index];
-            if (ParseHeaderField(index, field, _voltageRegex, _voltageIndices)) continue;
-            if (ParseHeaderField(index, field, _clockRegex, _clockIndices)) continue;
+            if (ParseHeaderField(index, field, _voltageRegex, _voltageIndices))
+            {
+                voltParsed = true;
+                continue;
+            }
+
+            if (ParseHeaderField(index, field, _clockRegex, _clockIndices))
+            {
+                clockParsed = true;
+                continue;
+            }
         }
+
+        var ok = voltParsed && clockParsed;
+        if (!ok)
+        {
+            _perCoreData.Clear();
+            _perCoreStats.Clear();
+        }
+
+        return ok;
     }
 }
